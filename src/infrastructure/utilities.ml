@@ -2,12 +2,14 @@ open Base
 open Hardcaml
 open Signal
 
+let ( <== ) = Signal.assign
+
 let counter ~clock ~trigger ~minimum ~maximum =
   assert (minimum <= maximum);
   let spec = Reg_spec.create ~clock () in
   let width = Signal.num_bits_to_represent maximum in
   if maximum = minimum then (
-    Signal.of_int ~width maximum
+    Signal.of_int_trunc ~width maximum
   ) else (
     let ctr_next = wire (Int.ceil_log2 (maximum - minimum + 1)) in
     let ctr = reg ~enable:trigger spec ctr_next in
@@ -16,7 +18,7 @@ let counter ~clock ~trigger ~minimum ~maximum =
         (zero (Signal.width ctr_next))
         (ctr +:. 1)
     );
-    Signal.uresize ctr width +:. minimum
+    Signal.uresize ctr ~width +:. minimum
   )
 ;;
 

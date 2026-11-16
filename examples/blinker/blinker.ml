@@ -3,9 +3,11 @@ open Hardcaml
 open Hardcaml_arty
 open Signal
 
+let ( <== ) = Signal.assign
+
 let of_int_minimum_width n =
   let width = Signal.num_bits_to_represent n in
-  Signal.of_int ~width n
+  Signal.of_int_trunc ~width n
 ;;
 
 let create_led4_bits ~clock =
@@ -13,7 +15,7 @@ let create_led4_bits ~clock =
   let ctr =
     reg_fb reg_spec ~enable:vdd ~width:30 ~f:(fun fb -> fb +:. 1)
   in
-  concat_lsb (List.init 4 ~f:(fun i -> sel_top ctr 2 ==:. i))
+  concat_lsb (List.init 4 ~f:(fun i -> sel_top ctr ~width:2 ==:. i))
 ;;
 
 let create_ring_register ~clock ~clear ~enable initial_values =
@@ -24,11 +26,8 @@ let create_ring_register ~clock ~clear ~enable initial_values =
   in
   let len = Array.length the_wires in
   for i = 0 to len - 1 do
-    let spec =
-      Reg_spec.create ~clock ~clear ()
-      |> Reg_spec.override ~clear_to:initial_values.(i)
-    in
-    the_wires.(i) <== reg spec ~enable the_wires.((i - 1 + len) % len)
+    let spec = Reg_spec.create ~clock ~clear () in
+    the_wires.(i) <== reg spec ~clear_to:initial_values.(i) ~enable the_wires.((i - 1 + len) % len)
   done;
   the_wires
 ;;
@@ -36,7 +35,7 @@ let create_ring_register ~clock ~clear ~enable initial_values =
 let create_rgb_led ~clock ~clear =
   let enable =
     let width = 24 in
-    let when_counter_is = of_int ~width ((1 lsl width) - 1) in
+    let when_counter_is = of_int_trunc ~width ((1 lsl width) - 1) in
     Utilities.trigger ~clock ~when_counter_is
   in
   let ring =
@@ -58,7 +57,7 @@ let create _scope (input : _ User_application.I.t) =
       ~clock:input.clk_166 ~clear:~:(input.clear_n_166)
   in
   let uart_tx =
-    { With_valid.valid = input.uart_rx.valid; value = input.uart_rx.value }
+    { Uart.Byte_with_valid.valid = input.uart_rx.valid; value = input.uart_rx.value }
   in
   { User_application.O.
     led_4bits

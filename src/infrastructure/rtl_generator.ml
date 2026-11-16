@@ -2,7 +2,15 @@ open Base
 open Hardcaml
 open Signal
 
+let ( <== ) = Signal.assign
+
 type create_fn = Scope.t -> Signal.t User_application.I.t -> Signal.t User_application.O.t
+
+module Output_mode = struct
+  type t =
+    | To_channel of Stdlib.out_channel
+    | To_file of string
+end
 
 module Top = struct
   module I = struct
@@ -60,7 +68,7 @@ module Top = struct
           ; mii              = input.eth_mii
           }
       else
-        Tri_mode_ethernet_mac.O.Of_signal.of_int 0
+        Tri_mode_ethernet_mac.O.Of_signal.of_int_trunc 0
     in
     let user_application =
       User_application.hierarchical
@@ -79,7 +87,7 @@ module Top = struct
             }
         }
     in
-    User_application.O.iter2 user_application_o user_application ~f:(<==);
+    User_application.O.iter2 user_application_o user_application ~f:( <== );
     Uart.set_tx_data_user uart_state_machine user_application.uart_tx;
     let `Tx_data_raw uart_tx =
       Uart.complete uart_state_machine
@@ -100,7 +108,7 @@ module Top = struct
   ;;
 end
 
-let generate ~instantiate_ethernet_mac (create_fn : create_fn) (output_mode : Rtl.Output_mode.t) =
+let generate ~instantiate_ethernet_mac (create_fn : create_fn) (output_mode : Output_mode.t) =
   let module C = Circuit.With_interface(Top.I)(Top.O) in
   let scope = Scope.create () in
   let circuit =
@@ -108,5 +116,12 @@ let generate ~instantiate_ethernet_mac (create_fn : create_fn) (output_mode : Rt
       (Top.create ~instantiate_ethernet_mac create_fn scope)
   in
   let database = Scope.circuit_database scope in
-  Rtl.output ~database ~output_mode Rtl.Language.Verilog circuit
+  let hierarchy = Rtl.create ~database Rtl.Language.Verilog [ circuit ] in
+  let rtl = Rope.to_string (Rtl.full_hierarchy hierarchy) in
+  match output_mode with
+  | To_channel oc -> Stdlib.output_string oc rtl
+  | To_file filename ->
+    let oc = Stdlib.open_out filename in
+    Stdlib.output_string oc rtl;
+    Stdlib.close_out oc
 ;;

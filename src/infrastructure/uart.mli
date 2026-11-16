@@ -2,7 +2,12 @@ open Base
 open Hardcaml
 
 module Byte_with_valid : sig
-  include Hardcaml.Interface.S with type 'a t = 'a With_valid.t
+  type 'a t =
+    { valid : 'a
+    ; value : 'a
+    }
+
+  include Hardcaml.Interface.S with type 'a t := 'a t
 end
 
 type t

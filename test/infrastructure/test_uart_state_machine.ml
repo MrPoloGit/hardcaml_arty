@@ -16,12 +16,12 @@ let%expect_test "tx_state_machine" =
       (Uart.Expert.create_tx_state_machine ~clear ~clock ~cycles_per_bit:4 { valid; value })
   in
   let circuit = Circuit.create_exn ~name:"tx_state_machine" [ uart_tx ] in
-  let waves, sim = Hardcaml_waveterm.Waveform.create
+  let waves, sim = Cyclesim.Waveform.create
       (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit) in
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   (Cyclesim.in_port sim "valid") := Bits.vdd;
-  (Cyclesim.in_port sim "value") := Bits.of_int ~width:8 0b01010111;
+  (Cyclesim.in_port sim "value") := Bits.of_int_trunc ~width:8 0b01010111;
   Cyclesim.cycle sim;
   (Cyclesim.in_port sim "valid") := Bits.gnd;
   for _ = 0 to 40 do
@@ -65,12 +65,12 @@ let%expect_test "rx_state_machine" =
   let valid = Signal.output "valid" uart_rx.valid in
   let value = Signal.output "value" uart_rx.value in
   let circuit = Circuit.create_exn ~name:"rx_state_machine" [ valid; value ] in
-  let waves, sim = Hardcaml_waveterm.Waveform.create (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit) in
+  let waves, sim = Cyclesim.Waveform.create (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit) in
   let valid = Cyclesim.out_port ~clock_edge:Before sim "valid" in
   let value = Cyclesim.out_port ~clock_edge:Before sim "value" in
   let cycle () =
     Cyclesim.cycle sim;
-    if Bits.is_vdd !valid then (
+    if Bits.to_bool !valid then (
       Stdio.printf "decoded %s\n\n" (Bits.to_string !value)
     );
   in
@@ -148,7 +148,7 @@ let%expect_test "loopback" =
       [ Signal.output  "uart_tx" uart_tx_raw ]
   in
   let waves, sim =
-    Hardcaml_waveterm.Waveform.create
+    Cyclesim.Waveform.create
       (Cyclesim.create ~config:Cyclesim.Config.trace_all circuit)
   in
   Cyclesim.cycle sim;

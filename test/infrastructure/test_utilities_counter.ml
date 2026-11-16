@@ -14,7 +14,7 @@ let%expect_test "simple counter" =
       ~maximum:(Char.to_int 'z')
   in
   let circuit = Circuit.create_exn ~name:"tx_state_machine" [ Signal.output "count" cnt ] in
-  let waves, sim = Hardcaml_waveterm.Waveform.create (Cyclesim.create circuit) in
+  let waves, sim = Cyclesim.Waveform.create (Cyclesim.create circuit) in
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;

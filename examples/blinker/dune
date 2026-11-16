@@ -1,6 +1,8 @@
  (executables
   (names blinker)
+  (flags (:standard -w -32))
   (libraries
      base
+     stdio
      hardcaml
      hardcaml_arty))

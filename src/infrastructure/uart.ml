@@ -2,19 +2,14 @@ open Base
 open Hardcaml
 open Signal
 
+let ( <== ) = Signal.assign
+
 module Byte_with_valid = struct
-  module Pre = struct
-    include With_valid
-
-    let t = 
-      { valid = ("valid", 1)
-      ; value = ("value", 8)
-      }
-    ;;
-  end
-
-  include Pre
-  include Hardcaml.Interface.Make(Pre)
+  type 'a t =
+    { valid : 'a
+    ; value : 'a [@bits 8]
+    }
+  [@@deriving sexp_of, hardcaml]
 end
 
 type counter =
@@ -49,7 +44,7 @@ module Tx_state_machine = struct
       | S_start_bit
       | S_data_bits
       | S_stop_bit
-    [@@deriving sexp_of, compare, enumerate]
+    [@@deriving sexp_of, compare ~localize, enumerate]
   end
 
   let create ~clock ~clear ~cycles_per_bit (byte_with_valid : Signal.t Byte_with_valid.t) =
@@ -62,7 +57,7 @@ module Tx_state_machine = struct
         ~clock ~clear ~active:increment_cycle_counter.value
     in
     let byte_cnt = Always.Variable.reg spec ~enable:vdd ~width:3 in
-    let output = Always.Variable.wire ~default:vdd in
+    let output = Always.Variable.wire ~default:vdd () in
     let data_latched =
       reg spec ~enable:(sm.is S_idle &: byte_with_valid.valid)
         byte_with_valid.value
@@ -115,7 +110,7 @@ module Rx_state_machine = struct
       | S_data_bits
       (* | S_wait_for_stop_bit *)
       | S_stop_bit
-    [@@deriving sexp_of, compare, enumerate]
+    [@@deriving sexp_of, compare ~localize, enumerate]
   end
 
   let rec shift_register ~enable ~spec ~n x =
@@ -136,8 +131,8 @@ module Rx_state_machine = struct
         ~clock ~clear ~active:increment_cycle_counter.value
     in
     let byte_cnt = Always.Variable.reg spec ~enable:vdd ~width:3 in
-    let consume_data_bit = Always.Variable.wire ~default:gnd in
-    let valid = Always.Variable.wire ~default:gnd in
+    let consume_data_bit = Always.Variable.wire ~default:gnd () in
+    let valid = Always.Variable.wire ~default:gnd () in
     ignore (sm.current -- "rx_state" : Signal.t);
     ignore (byte_cnt.value -- "rx_byte_cnt" : Signal.t); 
     Always.(compile [
@@ -190,7 +185,7 @@ module Rx_state_machine = struct
             ]
           ]
         ]]);
-    { With_valid.
+    { Byte_with_valid.
       valid = valid.value
     ; value =
         Signal.concat_msb

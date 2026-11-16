@@ -19,7 +19,7 @@ end
     [@@deriving sexp_of, hardcaml]
 
     let unused (type a) (module Comb : Comb.S with type t = a) =
-      map t ~f:(fun (_name, width) -> Comb.zero width)
+      map port_names_and_widths ~f:(fun (_name, width) -> Comb.zero width)
     ;;
   end
 end
@@ -66,8 +66,8 @@ let check_port_width (name, width) signal =
 
 let hierarchical ?(name = "user_application") create_fn scope input =
   let module Hierarchy = Hierarchy.In_scope(I)(O) in
-  I.(iter2 t input ~f:check_port_width);
+  I.(iter2 port_names_and_widths input ~f:check_port_width);
   let output = Hierarchy.hierarchical ~name ~scope create_fn input in
-  O.(iter2 t output ~f:check_port_width);
+  O.(iter2 port_names_and_widths output ~f:check_port_width);
   output
 ;;
