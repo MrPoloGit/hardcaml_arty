@@ -1,5 +1,7 @@
 (lang dune 3.4)
 
+(name hardcaml_arty)
+
 (generate_opam_files true)
 
 (license MIT)
